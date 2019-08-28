@@ -65,7 +65,7 @@ steps:
 
       if [ $EfiPrevious != $EfiLatest ]; then
           rm -rf $repo/Commits/Efi.sha1;
-          echo "Changes Found in EfiPkg";
+          echo "Changes found in EfiPkg";
           echo $EfiLatest >> $repo/Commits/Efi.sha1;
           echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
