@@ -74,6 +74,7 @@ steps:
       fi
 
 - task: Bash@3
+  displayName: Build OC
   inputs:
     targetType: 'inline'
     script: |
@@ -88,28 +89,34 @@ steps:
       fi
 
 - task: CmdLine@2
+  displayName: Move Binaries
   inputs:
     script: |
-      cd ../b/OpenCorePkg;
-      mkdir ../../a/OC;
-      cp UDK/Build/OpenCorePkg/DEBUG*/X64/OpenCore*.zip ../../a/OC;
-      cp UDK/Build/OpenCorePkg/RELEASE*/X64/OpenCore*.zip ../../a/OC;
-      cd UDK/Build/OpenCorePkg/NOOPT*/X64;
-      zip -r OpenCore-NOOPT.zip *.efi;
-      cp OpenCore-NOOPT.zip ../../../../../../../a/OC
+      if [ $(BuildCheck) = True ]; then
+        cd ../b/OpenCorePkg;
+        mkdir ../../a/OC;
+        cp UDK/Build/OpenCorePkg/DEBUG*/X64/OpenCore*.zip ../../a/OC;
+        cp UDK/Build/OpenCorePkg/RELEASE*/X64/OpenCore*.zip ../../a/OC;
+        cd UDK/Build/OpenCorePkg/NOOPT*/X64;
+        zip -r OpenCore-NOOPT.zip *.efi;
+        cp OpenCore-NOOPT.zip ../../../../../../../a/OC
+      fi
 
 - task: CmdLine@2
+  displayName: Refreash Commits
   inputs:
     script: |
-      git config --global credential.helper store
-      echo https://$(PAT):x-oauth-basic@github.com >> ~/.git-credentials
-      echo "" >> ~/.git-credentials
-      git config --global user.email $(Email)
-      git config --global user.name $(User)
-      cd ../b/RepoOperation/$(repo);
-      git add .;
-      git commit -m "Refresh Commits to $(BuildDate)";
-      git push origin master
+      if [ $(BuildCheck) = True ]; then
+        git config --global credential.helper store
+        echo https://$(PAT):x-oauth-basic@github.com >> ~/.git-credentials
+        echo "" >> ~/.git-credentials
+        git config --global user.email $(Email)
+        git config --global user.name $(User)
+        cd ../b/RepoOperation/$(repo);
+        git add .;
+        git commit -m "Refresh Commits to $(BuildDate)";
+        git push origin master
+      fi
 
 - task: GitHubRelease@0
   condition: eq(variables['BuildCheck'], 'True')
