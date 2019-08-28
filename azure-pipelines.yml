@@ -29,7 +29,7 @@ steps:
       mkdir "RepoOperation";
       cd "RepoOperation";
       repo=$(repo);
-      echo "##vso[task.setvariable variable=BuildCheck]False"
+      echo "##vso[task.setvariable variable=BuildCheck]False";
       git clone "https://github.com/williambj1/$repo.git";
 
       OCLatest="$(git ls-remote https://github.com/acidanthera/OpenCorePkg.git HEAD | cut -c1-40)";
@@ -51,25 +51,29 @@ steps:
 
       if [ $OCPrevious != $OCLatest ]; then
           rm -rf $repo/Commits/OC.sha1;
+          echo "Changes found in OpenCore Pkg";
           echo $OCLatest >> $repo/Commits/OC.sha1;
-          echo "##vso[task.setvariable variable=BuildCheck]True"
+          echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
 
       if [ $OCSupportPrevious != $OCSupportLatest ]; then
           rm -rf $repo/Commits/OCSupport.sha1;
-          echo $OCLatest >> $repo/Commits/OCSupport.sha1;
-          echo "##vso[task.setvariable variable=BuildCheck]True"
+          echo "Changes found in OCSupportPkg";
+          echo $OCSupportLatest >> $repo/Commits/OCSupport.sha1;
+          echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
 
       if [ $EfiPrevious != $EfiLatest ]; then
           rm -rf $repo/Commits/Efi.sha1;
-          echo $OCLatest >> $repo/Commits/Efi.sha1;
-          echo "##vso[task.setvariable variable=BuildCheck]True"
+          echo "Changes Found in EfiPkg";
+          echo $EfiLatest >> $repo/Commits/Efi.sha1;
+          echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
 
       if [ $MIPrevious != $MILatest ]; then
           rm -rf $repo/Commits/MI.sha1;
-          echo $OCLatest >> $repo/Commits/MI.sha1;
+          echo "Changes found in MacInfoPkg"
+          echo $MILatest >> $repo/Commits/MI.sha1;
           echo "##vso[task.setvariable variable=BuildCheck]True"
       fi
 
