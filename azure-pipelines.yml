@@ -3,11 +3,12 @@ trigger: none
 pr: none
 
 schedules:
-- cron: "0 0 * * *"
-  displayName: Daily midnight build
+- cron: "3 * * * *"
+  displayName: Schedule Test
   branches:
     include:
     - master
+  always: true
 
 variables:
   repo: 'OpenCore-Factory'
@@ -120,5 +121,6 @@ steps:
     target: '$(Build.SourceVersion)'
     tagSource: 'manual'
     tag: '$(BuildDate)'
+    title: '$(BuildDate)'
     assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
     addChangeLog: false
