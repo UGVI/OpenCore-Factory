@@ -1,0 +1,124 @@
+# OC Release
+trigger: none
+pr: none
+
+schedules:
+- cron: "0 0 * * *"
+  displayName: Daily midnight build
+  branches:
+    include:
+    - master
+
+variables:
+  repo: 'OpenCore-Factory'
+  FORCE_INSTALL: 1
+
+pool:
+  vmImage: 'macOS-10.14'
+
+steps:
+
+- task: Bash@3
+  displayName: Check Changes
+  inputs:
+    targetType: 'inline'
+    script: |
+      #!/bin/bash
+      cd ../b;
+      mkdir "RepoOperation";
+      cd "RepoOperation";
+      repo=$(repo);
+      echo "##vso[task.setvariable variable=BuildCheck]False"
+      git clone "https://github.com/williambj1/$repo.git";
+
+      OCLatest="$(git ls-remote https://github.com/acidanthera/OpenCorePkg.git HEAD | cut -c1-40)";
+      echo "##vso[task.setvariable variable=OCRemote]$OCLatest";
+
+      OCSupportLatest="$(git ls-remote https://github.com/acidanthera/OCSupportPkg.git HEAD | cut -c1-40)";
+      echo "##vso[task.setvariable variable=OCSuppportRemote]$OCSupportLatest";
+
+      EfiLatest="$(git ls-remote https://github.com/acidanthera/EfiPkg.git HEAD | cut -c1-40)";
+      echo "##vso[task.setvariable variable=EfiRemote]$EfiLatest";
+
+      MILatest="$(git ls-remote https://github.com/acidanthera/MacInfoPkg.git HEAD | cut -c1-40)";
+      echo "##vso[task.setvariable variable=MIRemote]$MILatest";
+
+      OCPrevious=$(<$repo/Commits/OC.sha1);
+      OCSupportPrevious=$(<$repo/Commits/OCSupport.sha1);
+      EfiPrevious=$(<$repo/Commits/Efi.sha1);
+      MIPrevious=$(<$repo/Commits/MI.sha1);
+
+      if [ $OCPrevious != $OCLatest ]; then
+          rm -rf $repo/Commits/OC.sha1;
+          echo $OCLatest >> $repo/Commits/OC.sha1;
+          echo "##vso[task.setvariable variable=BuildCheck]True"
+      fi
+
+      if [ $OCSupportPrevious != $OCSupportLatest ]; then
+          rm -rf $repo/Commits/OCSupport.sha1;
+          echo $OCLatest >> $repo/Commits/OCSupport.sha1;
+          echo "##vso[task.setvariable variable=BuildCheck]True"
+      fi
+
+      if [ $EfiPrevious != $EfiLatest ]; then
+          rm -rf $repo/Commits/Efi.sha1;
+          echo $OCLatest >> $repo/Commits/Efi.sha1;
+          echo "##vso[task.setvariable variable=BuildCheck]True"
+      fi
+
+      if [ $MIPrevious != $MILatest ]; then
+          rm -rf $repo/Commits/MI.sha1;
+          echo $OCLatest >> $repo/Commits/MI.sha1;
+          echo "##vso[task.setvariable variable=BuildCheck]True"
+      fi
+
+- task: Bash@3
+  inputs:
+    targetType: 'inline'
+    script: |
+      #!/bin/bash
+      if [ $(BuildCheck) = True ]; then
+          BD="$(date +"%Y-%m-%d")";
+          echo "##vso[task.setvariable variable=BuildDate]$BD";
+          cd ../b;
+          git clone https://github.com/acidanthera/OpenCorePkg.git;
+          cd OpenCorePkg;
+          ./macbuild.tool
+      fi
+
+- task: CmdLine@2
+  inputs:
+    script: |
+      cd ../b/OpenCorePkg;
+      mkdir ../../a/OC;
+      cp UDK/Build/OpenCorePkg/DEBUG*/X64/OpenCore*.zip ../../a/OC;
+      cp UDK/Build/OpenCorePkg/RELEASE*/X64/OpenCore*.zip ../../a/OC;
+      cd UDK/Build/OpenCorePkg/NOOPT*/X64;
+      zip -r OpenCore-NOOPT.zip *.efi;
+      cp OpenCore-NOOPT.zip ../../../../../../../a/OC
+
+- task: CmdLine@2
+  inputs:
+    script: |
+      git config --global credential.helper store
+      echo https://$(PAT):x-oauth-basic@github.com >> ~/.git-credentials
+      echo "" >> ~/.git-credentials
+      git config --global user.email $(Email)
+      git config --global user.name $(User)
+      cd ../b/RepoOperation/$(repo);
+      git add .;
+      git commit -m "Refresh Commits to $(BuildDate)";
+      git push origin master
+
+- task: GitHubRelease@0
+  condition: eq(variables['BuildCheck'], 'True')
+  displayName: 'Publish GitHub Release'
+  inputs:
+    gitHubConnection: release
+    repositoryName: '$(Build.Repository.Name)'
+    action: 'edit'
+    target: '$(Build.SourceVersion)'
+    tagSource: 'manual'
+    tag: '$(BuildDate)'
+    assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
+    addChangeLog: false
