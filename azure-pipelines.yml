@@ -3,7 +3,7 @@ trigger: none
 pr: none
 
 schedules:
-- cron: "0 */6 * * *"
+- cron: "0 */8 * * *"
   displayName: Schedule Build
   branches:
     include:
@@ -135,3 +135,4 @@ steps:
     title: '$(BuildDate)'
     assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
     addChangeLog: false
+    isPreRelease: true
