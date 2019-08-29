@@ -33,21 +33,19 @@ steps:
       git clone "https://github.com/williambj1/$repo.git";
 
       OCLatest="$(git ls-remote https://github.com/acidanthera/OpenCorePkg.git HEAD | cut -c1-40)";
-      echo "##vso[task.setvariable variable=OCRemote]$OCLatest";
-
-      OCSupportLatest="$(git ls-remote https://github.com/acidanthera/OCSupportPkg.git HEAD | cut -c1-40)";
-      echo "##vso[task.setvariable variable=OCSuppportRemote]$OCSupportLatest";
-
+      OcSupportLatest="$(git ls-remote https://github.com/acidanthera/OcSupportPkg.git HEAD | cut -c1-40)";
       EfiLatest="$(git ls-remote https://github.com/acidanthera/EfiPkg.git HEAD | cut -c1-40)";
-      echo "##vso[task.setvariable variable=EfiRemote]$EfiLatest";
-
       MILatest="$(git ls-remote https://github.com/acidanthera/MacInfoPkg.git HEAD | cut -c1-40)";
-      echo "##vso[task.setvariable variable=MIRemote]$MILatest";
 
       OCPrevious=$(<$repo/Commits/OC.sha1);
-      OCSupportPrevious=$(<$repo/Commits/OCSupport.sha1);
+      OcSupportPrevious=$(<$repo/Commits/OcSupport.sha1);
       EfiPrevious=$(<$repo/Commits/Efi.sha1);
       MIPrevious=$(<$repo/Commits/MI.sha1);
+
+      echo "##vso[task.setvariable variable=OCcmt]$OCPrevious";
+      echo "##vso[task.setvariable variable=OcSuppportcmt]$OcSupportPrevious";
+      echo "##vso[task.setvariable variable=Eficmt]$EfiPrevious";
+      echo "##vso[task.setvariable variable=MIcmt]$MIPrevious";
 
       if [ $OCPrevious != $OCLatest ]; then
           rm -rf $repo/Commits/OC.sha1;
@@ -56,10 +54,10 @@ steps:
           echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
 
-      if [ $OCSupportPrevious != $OCSupportLatest ]; then
-          rm -rf $repo/Commits/OCSupport.sha1;
-          echo "Changes found in OCSupportPkg";
-          echo $OCSupportLatest >> $repo/Commits/OCSupport.sha1;
+      if [ $OcSupportPrevious != $OcSupportLatest ]; then
+          rm -rf $repo/Commits/OcSupport.sha1;
+          echo "Changes found in OcSupportPkg";
+          echo $OcSupportLatest >> $repo/Commits/OcSupport.sha1;
           echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
 
@@ -78,49 +76,87 @@ steps:
       fi
 
 - task: Bash@3
+  condition: eq(variables['BuildCheck'], 'True')
   displayName: Build OC
   inputs:
     targetType: 'inline'
     script: |
       #!/bin/bash
-      if [ $(BuildCheck) = True ]; then
-          BD="$(date +"%Y-%m-%d")";
-          echo "##vso[task.setvariable variable=BuildDate]$BD";
-          cd ../b;
-          git clone https://github.com/acidanthera/OpenCorePkg.git;
-          cd OpenCorePkg;
-          ./macbuild.tool
-      fi
+      BD="$(date +"%Y-%m-%d")";
+      echo "##vso[task.setvariable variable=BuildDate]$BD";
+      cd ../b;
+      git clone https://github.com/acidanthera/OpenCorePkg.git;
+      cd OpenCorePkg;
+      sed -i -e 's/--depth=1 //' macbuild.tool
+      sed -i -e 's/.dsc/.dsc \| xcpretty/g' macbuild.tool
+      sed -i -e 's/updaterepo "https\:\/\/github.com\/acidanthera\/audk" UDK master || exit 1/git clone https\:\/\/github.com\/acidanthera\/audk --depth=1 UDK || exit 1/' macbuild.tool
+      ./macbuild.tool
 
 - task: CmdLine@2
+  condition: eq(variables['BuildCheck'], 'True')
   displayName: Move Binaries
   inputs:
     script: |
-      if [ $(BuildCheck) = True ]; then
-        cd ../b/OpenCorePkg;
-        mkdir ../../a/OC;
-        cp UDK/Build/OpenCorePkg/DEBUG*/X64/OpenCore*.zip ../../a/OC;
-        cp UDK/Build/OpenCorePkg/RELEASE*/X64/OpenCore*.zip ../../a/OC;
-        cd UDK/Build/OpenCorePkg/NOOPT*/X64;
-        zip -r OpenCore-NOOPT.zip *.efi;
-        cp OpenCore-NOOPT.zip ../../../../../../../a/OC
+      cd ../b/OpenCorePkg;
+      mkdir ../../a/OC;
+      cp UDK/Build/OpenCorePkg/DEBUG*/X64/OpenCore*.zip ../../a/OC;
+      cp UDK/Build/OpenCorePkg/RELEASE*/X64/OpenCore*.zip ../../a/OC;
+      cd UDK/Build/OpenCorePkg/NOOPT*/X64;
+      zip -r OpenCore-NOOPT.zip *.efi;
+      cp OpenCore-NOOPT.zip ../../../../../../../a/OC
+
+- task: Bash@3
+  condition: eq(variables['BuildCheck'], 'True')
+  displayName: Get Commits
+  inputs:
+    script: |
+      echo "## Changes" >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+      cd ../b/OpenCorePkg/UDK/OpenCorePkg;
+      OCcount="$(git rev-list --count $(OCcmt)..HEAD)"
+      if [ OCcount != 0 ]; then
+        OCNote=$(git log -$count --oneline --format=" - %s")
+        echo "### OpenCorePkg" >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+        echo $OCNote >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+      fi
+
+      cd ../OcSupportPkg
+      OcSupportcount="$(git rev-list --count $(OcSupportcmt)..HEAD)"
+      if [ OcSupportcount != 0 ]; then
+        OcSupportNote=$(git log -$count --oneline --format=" - %s")
+        echo "### OcSupportPkg" >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+        echo $OcSupportNote >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+      fi
+
+      cd ../EfiPkg
+      Eficount="$(git rev-list --count $(Eficmt)..HEAD)"
+      if [ Eficount != 0 ]; then
+        EfiNote=$(git log -$count --oneline --format=" - %s")
+        echo "### EfiPkg" >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+        echo $EfiNote >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+      fi
+
+      cd ../MacInfoPkg
+      MIcount="$(git rev-list --count $(MIcmt)..HEAD)"
+      if [ MIcount != 0 ]; then
+        MINote=$(git log -$count --oneline --format=" - %s")
+        echo "### MacInfoPkg" >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
+        echo $MINote >> $(Build.ArtifactStagingDirectory)/ReleaseNotes.md
       fi
 
 - task: CmdLine@2
+  condition: eq(variables['BuildCheck'], 'True')
   displayName: Refreash Commits
   inputs:
     script: |
-      if [ $(BuildCheck) = True ]; then
-        git config --global credential.helper store
-        echo https://$(PAT):x-oauth-basic@github.com >> ~/.git-credentials
-        echo "" >> ~/.git-credentials
-        git config --global user.email $(Email)
-        git config --global user.name $(User)
-        cd ../b/RepoOperation/$(repo);
-        git add .;
-        git commit -m "Refresh Commits to $(BuildDate)";
-        git push origin master
-      fi
+      git config --global credential.helper store
+      echo https://$(PAT):x-oauth-basic@github.com >> ~/.git-credentials
+      echo "" >> ~/.git-credentials
+      git config --global user.email $(Email)
+      git config --global user.name $(User)
+      cd ../b/RepoOperation/$(repo);
+      git add .;
+      git commit -m "Refresh Commits to $(BuildDate)";
+      git push origin master
 
 - task: GitHubRelease@0
   condition: eq(variables['BuildCheck'], 'True')
@@ -133,6 +169,7 @@ steps:
     tagSource: 'manual'
     tag: '$(BuildDate)'
     title: '$(BuildDate)'
+    releaseNotesFile: '$(Build.ArtifactStagingDirectory)/ReleaseNotes.md'
     assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
     addChangeLog: false
     isPreRelease: true
