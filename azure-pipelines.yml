@@ -25,6 +25,8 @@ steps:
     targetType: 'inline'
     script: |
       #!/bin/bash
+      BD="$(date +"%Y-%m-%d")";
+      echo "##vso[task.setvariable variable=BuildDate]$BD";
       cd ../b;
       mkdir "RepoOperation";
       cd "RepoOperation";
@@ -42,14 +44,25 @@ steps:
       EfiPrevious=$(<$repo/Commits/Efi.sha1);
       MIPrevious=$(<$repo/Commits/MI.sha1);
 
-      echo "##vso[task.setvariable variable=OCcmt]$OCPrevious";
-      echo "##vso[task.setvariable variable=OcSuppportcmt]$OcSupportPrevious";
-      echo "##vso[task.setvariable variable=Eficmt]$EfiPrevious";
-      echo "##vso[task.setvariable variable=MIcmt]$MIPrevious";
+      if [ $(basename $repo/Commits/20*) != $BD ]; then
+        rm -rf $repo/Commits/20*;
+        mkdir $repo/Commits/$BD;
+        cp $repo/Commits/*.sha1 $repo/Commits/$BD;
+      fi
+
+      OCTdy=$(<$repo/Commits/$BD/OC.sha1);
+      OcSupportTdy=$(<$repo/Commits/$BD/OcSupport.sha1);
+      EfiTdy=$(<$repo/Commits/$BD/Efi.sha1);
+      MITdy=$(<$repo/Commits/$BD/MI.sha1);
+
+      echo "##vso[task.setvariable variable=OCcmt]$OCTdy";
+      echo "##vso[task.setvariable variable=OcSupportcmt]$OcSupportTdy";
+      echo "##vso[task.setvariable variable=Eficmt]$EfiTdy";
+      echo "##vso[task.setvariable variable=MIcmt]$MITdy";
 
       if [ $OCPrevious != $OCLatest ]; then
           rm -rf $repo/Commits/OC.sha1;
-          echo "Changes found in OpenCore Pkg";
+          echo "Changes found in OpenCorePkg";
           echo $OCLatest >> $repo/Commits/OC.sha1;
           echo "##vso[task.setvariable variable=BuildCheck]True";
       fi
@@ -82,8 +95,6 @@ steps:
     targetType: 'inline'
     script: |
       #!/bin/bash
-      BD="$(date +"%Y-%m-%d")";
-      echo "##vso[task.setvariable variable=BuildDate]$BD";
       cd ../b;
       git clone https://github.com/acidanthera/OpenCorePkg.git;
       cd OpenCorePkg;
@@ -105,53 +116,61 @@ steps:
       zip -r OpenCore-NOOPT.zip *.efi;
       cp OpenCore-NOOPT.zip ../../../../../../../a/OC
 
-#- task: Bash@3
-#  condition: eq(variables['BuildCheck'], 'True')
-#  displayName: Get Commits
-#  inputs:
-#    script: |
-#      ToA="../../../../a"
-#      cd ../b/OpenCorePkg/UDK/OpenCorePkg;
-#      echo "## Changes" >> ../../a/ReleaseNotes.md
-#      OCcount="$(git rev-list --count $(OCcmt)..HEAD)"
-#      if [ OCcount != 0 ]; then
-#        OCNote=$(git log -$count --oneline --format=" - %s")
-#        echo "### OpenCorePkg" >> ../../a/ReleaseNotes.md
-#        echo $OCNote >> ../../a/ReleaseNotes.md
-#      fi
-#
-#      cd ../OcSupportPkg
-#      OcSupportcount="$(git rev-list --count $(OcSupportcmt)..HEAD)"
-#      if [ OcSupportcount != 0 ]; then
-#        OcSupportNote=$(git log -$count --oneline --format=" - %s")
-#        echo "### OcSupportPkg" >> $ToA/ReleaseNotes.md
-#        echo $OcSupportNote >> $ToA/ReleaseNotes.md
-#      fi
-#
-#      cd ../EfiPkg
-#      Eficount="$(git rev-list --count $(Eficmt)..HEAD)"
-#      if [ Eficount != 0 ]; then
-#        EfiNote=$(git log -$count --oneline --format=" - %s")
-#        echo "### EfiPkg" >> $ToA/ReleaseNotes.md
-#        echo $EfiNote >> $ToA/ReleaseNotes.md
-#      fi
-#
-#      cd ../MacInfoPkg
-#      MIcount="$(git rev-list --count $(MIcmt)..HEAD)"
-#      if [ MIcount != 0 ]; then
-#        MINote=$(git log -$count --oneline --format=" - %s")
-#        echo "### MacInfoPkg" >> $ToA/ReleaseNotes.md
-#        echo $MINote >> $ToA/ReleaseNotes.md
-#      fi
+- task: Bash@3
+  condition: eq(variables['BuildCheck'], 'True')
+  displayName: Get Commit Notes
+  inputs:
+    targetType: 'inline'
+    script: |
+      #!/bin/bash
+      ToA="../../../../a";
+      cd ../b/OpenCorePkg/UDK/OpenCorePkg;
+      echo "## Changes" >> ../../a/ReleaseNotes.md;
+      OCcount="$(git rev-list --count $(OCcmt)..HEAD)";
+      if [ $OCcount != 0 ]; then
+        OCNote=$(git log -$OCcount --format=" - %s %n")
+        echo "Got Notes from OpenCorePkg";
+        echo "### OpenCorePkg" >> ../../a/ReleaseNotes.md;
+        echo $OCNote >> ../../a/ReleaseNotes.md;
+      fi
+
+      cd ../OcSupportPkg;
+      OcSupportcount="$(git rev-list --count $(OcSupportcmt)..HEAD)";
+      if [ $OcSupportcount != 0 ]; then
+        OcSupportNote=$(git log -$OcSupportcount --format=" - %s %n");
+        echo "Got Notes from OcSupportPkg";
+        echo "### OcSupportPkg" >> $ToA/ReleaseNotes.md;
+        echo $OcSupportNote >> $ToA/ReleaseNotes.md;
+      fi
+
+      cd ../EfiPkg;
+      Eficount="$(git rev-list --count $(Eficmt)..HEAD)";
+      if [ $Eficount != 0 ]; then
+        EfiNote=$(git log -$Eficount --format=" - %s %n");
+        echo "Got Notes from EfiPkg";
+        echo "### EfiPkg" >> $ToA/ReleaseNotes.md;
+        echo $EfiNote >> $ToA/ReleaseNotes.md;
+      fi
+
+      cd ../MacInfoPkg;
+      MIcount="$(git rev-list --count $(MIcmt)..HEAD)";
+      if [ $MIcount != 0 ]; then
+        MINote=$(git log -$MIcount --format=" - %s %n");
+        echo "Got Notes from MacInfoPkg";
+        echo "### MacInfoPkg" >> $ToA/ReleaseNotes.md;
+        echo $MINote >> $ToA/ReleaseNotes.md
+      fi
+      cd $ToA
+      # An extremely dirty solution to solve Azure's buggy bash line wrap
+      sed -i -e $'s/ -/\\\n-/g' ReleaseNotes.md
 
 - task: CmdLine@2
   condition: eq(variables['BuildCheck'], 'True')
-  displayName: Refreash Commits
+  displayName: Refresh Commits
   inputs:
     script: |
       git config --global credential.helper store
       echo https://$(PAT):x-oauth-basic@github.com >> ~/.git-credentials
-      echo "" >> ~/.git-credentials
       git config --global user.email $(Email)
       git config --global user.name $(User)
       cd ../b/RepoOperation/$(repo);
@@ -170,7 +189,8 @@ steps:
     tagSource: 'manual'
     tag: '$(BuildDate)'
     title: '$(BuildDate)'
-    #releaseNotesFile: '$(Build.ArtifactStagingDirectory)/ReleaseNotes.md'
+    releaseNotesFile: '$(Build.ArtifactStagingDirectory)/ReleaseNotes.md'
     assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
     addChangeLog: false
     isPreRelease: true
+    isDraft: true
