@@ -193,4 +193,3 @@ steps:
     assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
     addChangeLog: false
     isPreRelease: true
-    isDraft: true
