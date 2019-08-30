@@ -105,44 +105,44 @@ steps:
       zip -r OpenCore-NOOPT.zip *.efi;
       cp OpenCore-NOOPT.zip ../../../../../../../a/OC
 
-- task: Bash@3
-  condition: eq(variables['BuildCheck'], 'True')
-  displayName: Get Commits
-  inputs:
-    script: |
-      ToA="../../../../a"
-      cd ../b/OpenCorePkg/UDK/OpenCorePkg;
-      echo "## Changes" >> ../../a/ReleaseNotes.md
-      OCcount="$(git rev-list --count $(OCcmt)..HEAD)"
-      if [ OCcount != 0 ]; then
-        OCNote=$(git log -$count --oneline --format=" - %s")
-        echo "### OpenCorePkg" >> ../../a/ReleaseNotes.md
-        echo $OCNote >> ../../a/ReleaseNotes.md
-      fi
-
-      cd ../OcSupportPkg
-      OcSupportcount="$(git rev-list --count $(OcSupportcmt)..HEAD)"
-      if [ OcSupportcount != 0 ]; then
-        OcSupportNote=$(git log -$count --oneline --format=" - %s")
-        echo "### OcSupportPkg" >> $ToA/ReleaseNotes.md
-        echo $OcSupportNote >> $ToA/ReleaseNotes.md
-      fi
-
-      cd ../EfiPkg
-      Eficount="$(git rev-list --count $(Eficmt)..HEAD)"
-      if [ Eficount != 0 ]; then
-        EfiNote=$(git log -$count --oneline --format=" - %s")
-        echo "### EfiPkg" >> $ToA/ReleaseNotes.md
-        echo $EfiNote >> $ToA/ReleaseNotes.md
-      fi
-
-      cd ../MacInfoPkg
-      MIcount="$(git rev-list --count $(MIcmt)..HEAD)"
-      if [ MIcount != 0 ]; then
-        MINote=$(git log -$count --oneline --format=" - %s")
-        echo "### MacInfoPkg" >> $ToA/ReleaseNotes.md
-        echo $MINote >> $ToA/ReleaseNotes.md
-      fi
+#- task: Bash@3
+#  condition: eq(variables['BuildCheck'], 'True')
+#  displayName: Get Commits
+#  inputs:
+#    script: |
+#      ToA="../../../../a"
+#      cd ../b/OpenCorePkg/UDK/OpenCorePkg;
+#      echo "## Changes" >> ../../a/ReleaseNotes.md
+#      OCcount="$(git rev-list --count $(OCcmt)..HEAD)"
+#      if [ OCcount != 0 ]; then
+#        OCNote=$(git log -$count --oneline --format=" - %s")
+#        echo "### OpenCorePkg" >> ../../a/ReleaseNotes.md
+#        echo $OCNote >> ../../a/ReleaseNotes.md
+#      fi
+#
+#      cd ../OcSupportPkg
+#      OcSupportcount="$(git rev-list --count $(OcSupportcmt)..HEAD)"
+#      if [ OcSupportcount != 0 ]; then
+#        OcSupportNote=$(git log -$count --oneline --format=" - %s")
+#        echo "### OcSupportPkg" >> $ToA/ReleaseNotes.md
+#        echo $OcSupportNote >> $ToA/ReleaseNotes.md
+#      fi
+#
+#      cd ../EfiPkg
+#      Eficount="$(git rev-list --count $(Eficmt)..HEAD)"
+#      if [ Eficount != 0 ]; then
+#        EfiNote=$(git log -$count --oneline --format=" - %s")
+#        echo "### EfiPkg" >> $ToA/ReleaseNotes.md
+#        echo $EfiNote >> $ToA/ReleaseNotes.md
+#      fi
+#
+#      cd ../MacInfoPkg
+#      MIcount="$(git rev-list --count $(MIcmt)..HEAD)"
+#      if [ MIcount != 0 ]; then
+#        MINote=$(git log -$count --oneline --format=" - %s")
+#        echo "### MacInfoPkg" >> $ToA/ReleaseNotes.md
+#        echo $MINote >> $ToA/ReleaseNotes.md
+#      fi
 
 - task: CmdLine@2
   condition: eq(variables['BuildCheck'], 'True')
@@ -170,7 +170,7 @@ steps:
     tagSource: 'manual'
     tag: '$(BuildDate)'
     title: '$(BuildDate)'
-    releaseNotesFile: '$(Build.ArtifactStagingDirectory)/ReleaseNotes.md'
+    #releaseNotesFile: '$(Build.ArtifactStagingDirectory)/ReleaseNotes.md'
     assets: '$(Build.ArtifactStagingDirectory)/OC/OpenCore*.zip'
     addChangeLog: false
     isPreRelease: true
