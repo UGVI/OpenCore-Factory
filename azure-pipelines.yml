@@ -161,6 +161,7 @@ steps:
         echo $MINote >> $ToA/ReleaseNotes.md
       fi
       cd $ToA
+      sed -i -e $'s/http.*//g' ReleaseNotes.md
       # An extremely dirty solution to solve Azure's buggy bash line wrap
       sed -i -e $'s/ -/\\\n-/g' ReleaseNotes.md
 
